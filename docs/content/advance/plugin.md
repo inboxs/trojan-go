@@ -4,7 +4,7 @@ draft: false
 weight: 7
 ---
 
-### 注意，Trojan-GFW版本不支持这个特性
+### 注意，Trojan不支持这个特性
 
 Trojan-Go支持可插拔的传输层。原则上，Trojan-Go可以使用任何有TCP隧道功能的软件作为传输层，如v2ray、shadowsocks、kcp等。同时，Trojan-Go也兼容Shadowsocks的SIP003插件标准，如GoQuiet，v2ray-plugin等。也可以使用Tor的传输层插件，如obfs4，meek等。
 
@@ -27,10 +27,10 @@ Trojan-Go支持可插拔的传输层。原则上，Trojan-Go可以使用任何�
 ```json
 ...（省略）
 "transport_plugin": {
-        "enabled": true,
-        "type": "shadowsocks",
-        "command": "./v2ray-plugin",
-        "arg": ["-server", "-host", "www.baidu.com"]
+    "enabled": true,
+    "type": "shadowsocks",
+    "command": "./v2ray-plugin",
+    "arg": ["-server", "-host", "www.baidu.com"]
 }
 ```
 
@@ -48,6 +48,6 @@ Trojan-Go支持可插拔的传输层。原则上，Trojan-Go可以使用任何�
 
 注意，v2ray-plugin插件需要指定```-server```参数来区分客户端和服务端。更多关于该插件详细的说明，参考v2ray-plugin的文档。
 
-启动Trojan-Go后，你可以看到v2ray-plugin启动的输出。插件将回把流量伪装为websocket流量并传输。
+启动Trojan-Go后，你可以看到v2ray-plugin启动的输出。插件将把流量伪装为Websocket流量并传输。
 
 非SIP003标准的插件可能需要不同的配置，你可以指定```type```为"other"，并自行指定插件地址，插件启动参数、环境变量。

@@ -2,22 +2,20 @@ package service
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 
+	"github.com/p4gefau1t/trojan-go/api"
 	"github.com/p4gefau1t/trojan-go/common"
-	"github.com/p4gefau1t/trojan-go/conf"
+	"github.com/p4gefau1t/trojan-go/config"
 	"github.com/p4gefau1t/trojan-go/log"
-	"github.com/p4gefau1t/trojan-go/proxy"
-	"github.com/p4gefau1t/trojan-go/stat"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"github.com/p4gefau1t/trojan-go/statistic"
+	"github.com/p4gefau1t/trojan-go/tunnel/trojan"
 )
 
 type ClientAPI struct {
 	TrojanClientServiceServer
 
-	auth          stat.Authenticator
+	auth          statistic.Authenticator
 	ctx           context.Context
 	uploadSpeed   uint64
 	downloadSpeed uint64
@@ -53,28 +51,35 @@ func (s *ClientAPI) GetTraffic(ctx context.Context, req *GetTrafficRequest) (*Ge
 	return resp, nil
 }
 
-func RunClientAPI(ctx context.Context, config *conf.GlobalConfig, auth stat.Authenticator) error {
-	var server *grpc.Server
-	if config.API.APITLS {
-		creds := credentials.NewTLS(&tls.Config{
-			ClientAuth:   tls.RequireAndVerifyClientCert,
-			Certificates: config.TLS.KeyPair,
-			ClientCAs:    config.TLS.ClientCertPool,
-		})
-		server = grpc.NewServer(grpc.Creds(creds))
-	} else {
-		server = grpc.NewServer()
+func RunClientAPI(ctx context.Context, auth statistic.Authenticator) error {
+	cfg := config.FromContext(ctx, Name).(*Config)
+	if !cfg.API.Enabled {
+		return nil
 	}
+	server, err := newAPIServer(cfg)
+	if err != nil {
+		return err
+	}
+	defer server.Stop()
 	service := &ClientAPI{
 		ctx:  ctx,
 		auth: auth,
 	}
 	RegisterTrojanClientServiceServer(server, service)
-	listener, err := net.Listen("tcp", config.API.APIAddress.String())
+	addr, err := net.ResolveIPAddr("ip", cfg.API.APIHost)
 	if err != nil {
-		return err
+		return common.NewError("api found invalid addr").Base(err)
 	}
-	log.Info("Trojan-Go client-side API service is listening on", config.API.APIAddress)
+	listener, err := net.Listen("tcp", (&net.TCPAddr{
+		IP:   addr.IP,
+		Port: cfg.API.APIPort,
+		Zone: addr.Zone,
+	}).String())
+	if err != nil {
+		return common.NewError("client api failed to listen").Base(err)
+	}
+	defer listener.Close()
+	log.Info("client-side api service is listening on", listener.Addr().String())
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- server.Serve(listener)
@@ -83,11 +88,11 @@ func RunClientAPI(ctx context.Context, config *conf.GlobalConfig, auth stat.Auth
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		server.Stop()
+		log.Debug("closed")
 		return nil
 	}
 }
 
 func init() {
-	proxy.RegisterAPI(conf.Client, RunClientAPI)
+	api.RegisterHandler(trojan.Name+"_CLIENT", RunClientAPI)
 }

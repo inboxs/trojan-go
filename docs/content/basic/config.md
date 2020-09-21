@@ -14,33 +14,7 @@ weight: 22
 
 - Trojan-Go，可以从release页面下载
 
-### 配置证书
-
-为了伪装成一个正常的HTTPS站点，也为了保证传输的安全，我们需要一份经过权威证书机构签名的证书。Trojan-Go支持从Let's Encrypt自动申请证书。首先将你的域名正确解析到你的服务器IP。然后准备好一个邮箱地址，合乎邮箱地址规则即可，不需要真实邮箱地址。保证你的服务器443和80端口没有被其他程序（nginx，apache，正在运行的Trojan等）占用。然后执行
-
-```shell
-sudo ./trojan-go -autocert request
-```
-
-按照屏幕提示填入相关信息。如果操作成功，当前目录下将得到四个文件
-
-- server.key 服务器私钥
-
-- server.crt 经过Let's Encrypt签名的服务器证书
-
-- user.key 用户Email对应的私钥
-
-- domain_info.json 域名和用户Email信息
-
-备份好这些文件，不要将.key文件分享给其他任何人，否则你的身份可能被冒用。
-
-证书的有效期通常是三个月，你可以使用
-
-```shell
-sudo ./trojan-go -autocert renew
-```
-
-进行证书更新。更新之前请确保同目录下有上述的四个文件。如果你没有指定ACME challenge使用的端口，Trojan-Go将默认使用443和80端口，请确保这两个端口没有被Trojan-Go或者其他程序（nginx, caddy等等）占用。
+- 证书和密钥，可以从letsencrpyt等机构免费申请签发
 
 ### 服务端配置
 
@@ -65,7 +39,6 @@ sudo ./trojan-go -autocert renew
     "ssl": {
         "cert": "server.crt",
         "key": "server.key",
-        "sni": "your-domain-name.com",
         "fallback_port": 1234
     }
 }
@@ -79,7 +52,7 @@ sudo ./trojan-go -autocert renew
 
 - 如果TLS握手成功，并且被确认是Trojan协议头部，并且其中的密码正确，那么服务器将解析来自客户端的请求并进行代理，否则和上一步的处理方法相同。
 
-- 如果TLS握手失败，说明对方使用的不是TLS协议进行连接。此时Trojan-Go将这个TCP连接代理到本地127.0.0.1:1234上运行的HTTPS服务，返回一个展示400 Bad Reqeust的HTTP页面。```fallback_port```是一个可选选项，如果没有填写，Trojan-Go会直接终止连接。虽然是可选的，但是还是强烈建议填写。
+- 如果TLS握手失败，说明对方使用的不是TLS协议进行连接。此时Trojan-Go将这个TCP连接代理到本地127.0.0.1:1234上运行的HTTPS服务（或者HTTP服务），返回一个展示400 Bad Reqeust的HTTP页面。```fallback_port```是一个可选选项，如果没有填写，Trojan-Go会直接终止连接。虽然是可选的，但是还是强烈建议填写。
 
 你可以通过使用浏览器访问你的域名```https://your-domain-name.com```来验证。如果工作正常，你的浏览器会显示一个正常的HTTPS保护的Web页面，页面内容与服务器本机80端口上的页面一致。你还可以使用```http://your-domain-name.com:443```验证```fallback_port```工作是否正常。
 
